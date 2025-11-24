@@ -56,6 +56,8 @@ flutter run -d chrome
 
 ### Build for Production
 
+## Web
+
 ```bash
 flutter build web --release
 ```
@@ -80,7 +82,7 @@ vercel --prod
 
 ## Tech Stack
 
-- **Frontend**: Flutter Web
+- **Frontend**: Flutter Web/iOS/Android/macOS/Windows
 - **Backend**: Supabase (PostgreSQL + Storage)
 - **AI**: OpenAI API (via Supabase Edge Functions)
 - **State Management**: BLoC Pattern
