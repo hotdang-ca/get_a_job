@@ -1,10 +1,10 @@
 import 'package:equatable/equatable.dart';
 import '../../data/models/job_model.dart';
 
-enum JobStatus { initial, loading, success, failure }
+enum JobLoadingStatus { initial, loading, success, failure }
 
 class JobState extends Equatable {
-  final JobStatus status;
+  final JobLoadingStatus status;
   final List<Job> jobs;
   final String? errorMessage;
   final String? lastUploadedResumeUrl;
@@ -13,7 +13,7 @@ class JobState extends Equatable {
   final bool isGenerating;
 
   const JobState({
-    this.status = JobStatus.initial,
+    this.status = JobLoadingStatus.initial,
     this.jobs = const [],
     this.errorMessage,
     this.lastUploadedResumeUrl,
@@ -23,7 +23,7 @@ class JobState extends Equatable {
   });
 
   JobState copyWith({
-    JobStatus? status,
+    JobLoadingStatus? status,
     List<Job>? jobs,
     String? errorMessage,
     String? lastUploadedResumeUrl,

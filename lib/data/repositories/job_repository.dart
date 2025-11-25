@@ -8,8 +8,10 @@ abstract class JobRepository {
   Future<List<Job>> getJobs();
   Future<Job> addJob(Job job);
   Future<void> updateJob(Job job);
+  Future<void> updateJobPositions(List<Job> jobs);
   Future<void> deleteJob(String id);
-  Future<String> uploadResume(String jobId, Uint8List fileBytes, String fileName);
+  Future<String> uploadResume(
+      String jobId, Uint8List fileBytes, String fileName);
   Future<String> generateCoverLetter(Job job);
 }
 
@@ -22,6 +24,7 @@ class SupabaseJobRepository implements JobRepository {
     final response = await _client
         .from(AppConstants.jobsTable)
         .select()
+        .order('position', ascending: true)
         .order('created_at', ascending: false);
 
     return (response as List).map((json) => Job.fromJson(json)).toList();
@@ -53,31 +56,41 @@ class SupabaseJobRepository implements JobRepository {
   }
 
   @override
+  Future<void> updateJobPositions(List<Job> jobs) async {
+    // Supabase doesn't support batch update with different values in one query easily without RPC.
+    // We will iterate and update. For small lists (kanban columns), this is acceptable.
+    // Optimisation: Use Future.wait to run in parallel.
+    await Future.wait(jobs.map((job) {
+      return _client
+          .from(AppConstants.jobsTable)
+          .update({'position': job.position}).eq('id', job.id);
+    }));
+  }
+
+  @override
   Future<void> deleteJob(String id) async {
     await _client.from(AppConstants.jobsTable).delete().eq('id', id);
   }
 
   @override
-  Future<String> uploadResume(String jobId, Uint8List fileBytes, String fileName) async {
+  Future<String> uploadResume(
+      String jobId, Uint8List fileBytes, String fileName) async {
     final path = '$jobId/$fileName';
-    await _client.storage
-        .from(AppConstants.resumesBucket)
-        .uploadBinary(
+    await _client.storage.from(AppConstants.resumesBucket).uploadBinary(
           path,
           fileBytes,
           fileOptions: const FileOptions(upsert: true),
         );
-    
-    final publicUrl = _client.storage
-        .from(AppConstants.resumesBucket)
-        .getPublicUrl(path);
-        
+
+    final publicUrl =
+        _client.storage.from(AppConstants.resumesBucket).getPublicUrl(path);
+
     return publicUrl;
   }
 
   @override
   Future<String> generateCoverLetter(Job job) async {
-    // For now, we'll just pass the job info. 
+    // For now, we'll just pass the job info.
     // In the future, we could download and parse the resume from resumeUrl
     // to extract text content, but that requires additional PDF parsing libraries
     return await _openAIService.generateCoverLetter(job);

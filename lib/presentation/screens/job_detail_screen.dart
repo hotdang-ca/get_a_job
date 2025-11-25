@@ -40,8 +40,8 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
   FocusNode _createdAtFocusNode = FocusNode();
   FocusNode _closingDateFocusNode = FocusNode();
 
-  late String _status;
-  late String _source;
+  late JobStatus _status;
+  late JobSource _source;
   DateTime? _closingDate;
   late DateTime _createdAt;
   String? _resumeUrl;
@@ -49,21 +49,8 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
   late final String _tempJobId;
   bool _hasBeenSaved = false; // Track if job has been saved to DB
 
-  final List<String> _statuses = const [
-    'To Apply',
-    'Applied',
-    'Interviewing',
-    'Offer',
-    'Rejected',
-  ];
-
-  final List<String> _sources = const [
-    'LinkedIn',
-    'Indeed',
-    'Job Bank',
-    'Direct',
-    'Other',
-  ];
+  final List<JobStatus> _statuses = JobStatus.values;
+  final List<JobSource> _sources = JobSource.values;
 
   @override
   void initState() {
@@ -77,15 +64,8 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
         TextEditingController(text: widget.job?.payRange ?? '');
     _descriptionController =
         TextEditingController(text: widget.job?.description ?? '');
-    _status = widget.job?.status ?? 'To Apply';
-    if (!_statuses.contains(_status)) {
-      _status = 'To Apply';
-    }
-
-    _source = widget.job?.source ?? 'LinkedIn';
-    if (!_sources.contains(_source)) {
-      _source = 'Other';
-    }
+    _status = widget.job?.status ?? JobStatus.toApply;
+    _source = widget.job?.source ?? JobSource.linkedIn;
 
     _closingDate = widget.job?.closingDate;
     _createdAt = widget.job?.createdAt ?? DateTime.now();
@@ -199,6 +179,23 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
   }
 
   Future<void> _generateCoverLetter() async {
+    if (_status != JobStatus.toApply) {
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Cannot Generate Cover Letter'),
+          content: const Text(
+              'The generated cover letter can only be modified when the job is in To Apply status.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
     final job = Job(
       id: widget.job?.id ?? _tempJobId,
       title: _titleController.text,
@@ -267,7 +264,8 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                   content: Text('Cover Letter generated successfully!')),
             );
           }
-          if (state.status == JobStatus.failure && state.errorMessage != null) {
+          if (state.status == JobLoadingStatus.failure &&
+              state.errorMessage != null) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Error: ${state.errorMessage}')),
             );
@@ -630,24 +628,24 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
         decoration: const InputDecoration(labelText: 'Company'),
       ),
       const SizedBox(height: 16),
-      DropdownButtonFormField<String>(
+      DropdownButtonFormField<JobSource>(
         focusNode: _sourceFocusNode,
         value: _source,
         decoration: const InputDecoration(labelText: 'Source'),
         items: _sources
-            .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+            .map((s) => DropdownMenuItem(value: s, child: Text(s.displayName)))
             .toList(),
         onChanged: (value) {
           if (value != null) setState(() => _source = value);
         },
       ),
       const SizedBox(height: 16),
-      DropdownButtonFormField<String>(
+      DropdownButtonFormField<JobStatus>(
         focusNode: _statusFocusNode,
         value: _status,
         decoration: const InputDecoration(labelText: 'Status'),
         items: _statuses
-            .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+            .map((s) => DropdownMenuItem(value: s, child: Text(s.displayName)))
             .toList(),
         onChanged: (value) {
           if (value != null) setState(() => _status = value);

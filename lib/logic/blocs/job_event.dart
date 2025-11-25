@@ -62,6 +62,21 @@ class GenerateCoverLetter extends JobEvent {
   List<Object?> get props => [job];
 }
 
+class ReorderJob extends JobEvent {
+  final Job job;
+  final int newIndex;
+  final JobStatus newStatus;
+
+  const ReorderJob({
+    required this.job,
+    required this.newIndex,
+    required this.newStatus,
+  });
+
+  @override
+  List<Object?> get props => [job, newIndex, newStatus];
+}
+
 class ClearJobState extends JobEvent {
   const ClearJobState();
 

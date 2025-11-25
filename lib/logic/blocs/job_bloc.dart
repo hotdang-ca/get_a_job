@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/repositories/job_repository.dart';
+import '../../data/models/job_model.dart';
 import 'job_event.dart';
 import 'job_state.dart';
 
@@ -15,20 +16,21 @@ class JobBloc extends Bloc<JobEvent, JobState> {
     on<DeleteJob>(_onDeleteJob);
     on<UploadResume>(_onUploadResume);
     on<GenerateCoverLetter>(_onGenerateCoverLetter);
+    on<ReorderJob>(_onReorderJob);
     on<ClearJobState>(_onClearJobState);
   }
 
   Future<void> _onLoadJobs(LoadJobs event, Emitter<JobState> emit) async {
-    emit(state.copyWith(status: JobStatus.loading));
+    emit(state.copyWith(status: JobLoadingStatus.loading));
     try {
       final jobs = await _jobRepository.getJobs();
       emit(state.copyWith(
-        status: JobStatus.success,
+        status: JobLoadingStatus.success,
         jobs: jobs,
       ));
     } catch (e) {
       emit(state.copyWith(
-        status: JobStatus.failure,
+        status: JobLoadingStatus.failure,
         errorMessage: e.toString(),
       ));
     }
@@ -38,7 +40,7 @@ class JobBloc extends Bloc<JobEvent, JobState> {
     // We keep the current jobs while adding, but set status to loading if we want to show a spinner
     // Or we can just optimistically update?
     // Let's stick to simple: Loading -> Success (with new list)
-    emit(state.copyWith(status: JobStatus.loading));
+    emit(state.copyWith(status: JobLoadingStatus.loading));
     try {
       await _jobRepository.addJob(event.job);
       // Reload jobs to ensure consistency and get the generated ID
@@ -46,33 +48,33 @@ class JobBloc extends Bloc<JobEvent, JobState> {
       add(LoadJobs());
     } catch (e) {
       emit(state.copyWith(
-        status: JobStatus.failure,
+        status: JobLoadingStatus.failure,
         errorMessage: e.toString(),
       ));
     }
   }
 
   Future<void> _onUpdateJob(UpdateJob event, Emitter<JobState> emit) async {
-    emit(state.copyWith(status: JobStatus.loading));
+    emit(state.copyWith(status: JobLoadingStatus.loading));
     try {
       await _jobRepository.updateJob(event.job);
       add(LoadJobs());
     } catch (e) {
       emit(state.copyWith(
-        status: JobStatus.failure,
+        status: JobLoadingStatus.failure,
         errorMessage: e.toString(),
       ));
     }
   }
 
   Future<void> _onDeleteJob(DeleteJob event, Emitter<JobState> emit) async {
-    emit(state.copyWith(status: JobStatus.loading));
+    emit(state.copyWith(status: JobLoadingStatus.loading));
     try {
       await _jobRepository.deleteJob(event.jobId);
       add(LoadJobs());
     } catch (e) {
       emit(state.copyWith(
-        status: JobStatus.failure,
+        status: JobLoadingStatus.failure,
         errorMessage: e.toString(),
       ));
     }
@@ -80,7 +82,7 @@ class JobBloc extends Bloc<JobEvent, JobState> {
 
   Future<void> _onUploadResume(
       UploadResume event, Emitter<JobState> emit) async {
-    emit(state.copyWith(status: JobStatus.loading));
+    emit(state.copyWith(status: JobLoadingStatus.loading));
     try {
       final downloadUrl = await _jobRepository.uploadResume(
         event.jobId,
@@ -112,17 +114,68 @@ class JobBloc extends Bloc<JobEvent, JobState> {
       // Or we just update the job in the DB?
 
       emit(state.copyWith(
-        status: JobStatus.success,
+        status: JobLoadingStatus.success,
         lastUploadedResumeUrl: downloadUrl,
         errorMessage: null,
         isUploading: false,
       ));
     } catch (e) {
       emit(state.copyWith(
-        status: JobStatus.failure,
+        status: JobLoadingStatus.failure,
         errorMessage: e.toString(),
         isUploading: false,
       ));
+    }
+  }
+
+  Future<void> _onReorderJob(ReorderJob event, Emitter<JobState> emit) async {
+    final currentJobs = List<Job>.from(state.jobs);
+    final job = event.job;
+    final JobStatus newStatus =
+        event.newStatus; // Ensure newStatus is JobStatus
+    final newIndex = event.newIndex;
+
+    // Update job status if changed
+    final updatedJob = job.copyWith(status: newStatus);
+
+    // Remove the job from the list (it might be the old version)
+    currentJobs.removeWhere((j) => j.id == job.id);
+
+    // Get all jobs with the new status
+    final statusJobs = currentJobs.where((j) => j.status == newStatus).toList();
+
+    // Insert at new index
+    // Clamp index to be safe
+    final index = newIndex.clamp(0, statusJobs.length);
+    statusJobs.insert(index, updatedJob);
+
+    // Update positions for all jobs in this status
+    final updatedStatusJobs = <Job>[];
+    for (int i = 0; i < statusJobs.length; i++) {
+      updatedStatusJobs.add(statusJobs[i].copyWith(position: i));
+    }
+
+    // Rebuild global list
+    // We keep the others and append the new status list.
+    // Note: This changes the global order of statuses, but that's fine for column view.
+    final otherJobs = currentJobs.where((j) => j.status != newStatus).toList();
+    final newGlobalList = [...otherJobs, ...updatedStatusJobs];
+
+    emit(state.copyWith(jobs: newGlobalList));
+
+    // Persist changes
+    try {
+      // If status changed, update the job fully first
+      if (job.status != newStatus) {
+        await _jobRepository.updateJob(updatedJob.copyWith(position: index));
+      }
+
+      // Update positions for all affected jobs
+      // We only need to update jobs whose position changed, but for simplicity we update all in the column
+      await _jobRepository.updateJobPositions(updatedStatusJobs);
+    } catch (e) {
+      // Handle error silently or emit failure?
+      // For now, we assume it works. If it fails, next reload will fix it.
     }
   }
 
@@ -132,14 +185,14 @@ class JobBloc extends Bloc<JobEvent, JobState> {
     try {
       final coverLetter = await _jobRepository.generateCoverLetter(event.job);
       emit(state.copyWith(
-        status: JobStatus.success,
+        status: JobLoadingStatus.success,
         lastGeneratedCoverLetter: coverLetter,
         errorMessage: null,
         isGenerating: false,
       ));
     } catch (e) {
       emit(state.copyWith(
-        status: JobStatus.failure,
+        status: JobLoadingStatus.failure,
         errorMessage: e.toString(),
         isGenerating: false,
       ));

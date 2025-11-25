@@ -18,13 +18,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final List<String> _statuses = const [
-    'To Apply',
-    'Applied',
-    'Interviewing',
-    'Offer',
-    'Rejected',
-  ];
+  final List<JobStatus> _statuses = JobStatus.values;
 
   final ScrollController _scrollController = ScrollController();
 
@@ -64,11 +58,11 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: BlocBuilder<JobBloc, JobState>(
         builder: (context, state) {
-          if (state.status == JobStatus.loading && state.jobs.isEmpty) {
+          if (state.status == JobLoadingStatus.loading && state.jobs.isEmpty) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (state.status == JobStatus.failure && state.jobs.isEmpty) {
+          if (state.status == JobLoadingStatus.failure && state.jobs.isEmpty) {
             return Center(child: Text('Error: ${state.errorMessage}'));
           }
 
@@ -92,8 +86,18 @@ class _HomeScreenState extends State<HomeScreen> {
                       context.read<JobBloc>().add(UpdateJob(updatedJob));
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text('Job status updated to $status')),
+                            content: Text(
+                                'Job status updated to ${status.displayName}')),
                       );
+                    } else {
+                      // Move to end of list
+                      context.read<JobBloc>().add(
+                            ReorderJob(
+                              job: job,
+                              newIndex: jobsInStatus.length,
+                              newStatus: status,
+                            ),
+                          );
                     }
                   },
                   builder: (context, candidateData, rejectedData) {
@@ -123,7 +127,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  status,
+                                  status.displayName,
                                   style:
                                       Theme.of(context).textTheme.titleMedium,
                                 ),
@@ -153,40 +157,80 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           const Divider(height: 1),
                           Expanded(
-                            child: ListView.builder(
+                            child: ListView.separated(
                               padding: const EdgeInsets.all(8),
                               itemCount: jobsInStatus.length,
+                              separatorBuilder: (context, index) =>
+                                  const SizedBox(height: 16),
                               itemBuilder: (context, index) {
                                 final job = jobsInStatus[index];
-                                return Draggable<Job>(
-                                  data: job,
-                                  feedback: Material(
-                                    elevation: 4,
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: SizedBox(
-                                      width: 280,
-                                      child: Opacity(
-                                        opacity: 0.8,
-                                        child: JobCard(job: job, onTap: () {}),
-                                      ),
-                                    ),
-                                  ),
-                                  childWhenDragging: Opacity(
-                                    opacity: 0.3,
-                                    child: JobCard(job: job, onTap: () {}),
-                                  ),
-                                  child: JobCard(
-                                    job: job,
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              JobDetailScreen(job: job),
+                                return DragTarget<Job>(
+                                  onWillAccept: (incomingJob) {
+                                    return incomingJob != null &&
+                                        incomingJob.id != job.id;
+                                  },
+                                  onAccept: (incomingJob) {
+                                    context.read<JobBloc>().add(
+                                          ReorderJob(
+                                            job: incomingJob,
+                                            newIndex: index,
+                                            newStatus: status,
+                                          ),
+                                        );
+                                  },
+                                  builder:
+                                      (context, candidateData, rejectedData) {
+                                    return Column(
+                                      children: [
+                                        if (candidateData.isNotEmpty)
+                                          Container(
+                                            height: 4,
+                                            margin: const EdgeInsets.only(
+                                                bottom: 8),
+                                            decoration: BoxDecoration(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .primary,
+                                              borderRadius:
+                                                  BorderRadius.circular(2),
+                                            ),
+                                          ),
+                                        Draggable<Job>(
+                                          data: job,
+                                          feedback: Material(
+                                            elevation: 4,
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            child: SizedBox(
+                                              width: 280,
+                                              child: Opacity(
+                                                opacity: 0.8,
+                                                child: JobCard(
+                                                    job: job, onTap: () {}),
+                                              ),
+                                            ),
+                                          ),
+                                          childWhenDragging: Opacity(
+                                            opacity: 0.3,
+                                            child:
+                                                JobCard(job: job, onTap: () {}),
+                                          ),
+                                          child: JobCard(
+                                            job: job,
+                                            onTap: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      JobDetailScreen(job: job),
+                                                ),
+                                              );
+                                            },
+                                          ),
                                         ),
-                                      );
-                                    },
-                                  ),
+                                      ],
+                                    );
+                                  },
                                 );
                               },
                             ),

@@ -26,6 +26,10 @@ class JobCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
+                job.status.displayName,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              Text(
                 job.title,
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
@@ -36,7 +40,7 @@ class JobCard extends StatelessWidget {
               const SizedBox(height: 4),
               if (job.company != null || job.source != null)
                 Text(
-                  job.company ?? job.source!,
+                  job.company ?? job.source!.displayName,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.secondary,
                   ),
