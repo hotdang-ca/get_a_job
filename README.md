@@ -4,6 +4,8 @@ A minimalist Flutter web application for tracking job applications with AI-power
 
 ## Features
 
+- 🔐 **Authentication**: Secure sign-in with Supabase Auth
+- 🚀 **Guest Mode**: Try the app with limited features (1 job, 1 AI generation)
 - 📋 Kanban board for job tracking
 - 🎨 Minimalist design with dark/light mode
 - 📄 Resume upload to Supabase Storage
@@ -36,6 +38,7 @@ flutter pub get
    - Copy `lib/core/constants.dart.template` to `lib/core/constants.dart`
    - Update with your Supabase URL and anon key
    - Run the SQL schema: `supabase_schema.sql` in your Supabase SQL editor
+   - (Optional) Run `migrate_jobs.sql` to migrate existing data to a user account
    - Create a storage bucket named `resumes` (make it public or configure RLS)
 
 4. Deploy Supabase Edge Function:
