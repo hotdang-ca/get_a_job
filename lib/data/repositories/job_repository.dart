@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/constants.dart';
 import '../models/job_model.dart';
 import '../services/openai_service.dart';
+import '../services/guest_storage_service.dart';
 
 abstract class JobRepository {
   Future<List<Job>> getJobs();
@@ -18,12 +19,19 @@ abstract class JobRepository {
 class SupabaseJobRepository implements JobRepository {
   final SupabaseClient _client = Supabase.instance.client;
   final OpenAIService _openAIService = OpenAIService();
+  final GuestStorageService _guestStorage = GuestStorageService();
 
   @override
   Future<List<Job>> getJobs() async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      return await _guestStorage.getGuestJobs();
+    }
+
     final response = await _client
         .from(AppConstants.jobsTable)
         .select()
+        .eq('user_id', user.id)
         .order('position', ascending: true)
         .order('created_at', ascending: false);
 
@@ -32,11 +40,16 @@ class SupabaseJobRepository implements JobRepository {
 
   @override
   Future<Job> addJob(Job job) async {
-    // We exclude 'id' from the insert because Supabase generates it.
-    // However, the model requires an ID.
-    // Strategy: Insert without ID, let Supabase generate it, then return the inserted row.
-    final jobData = job.toJson();
-    // jobData.remove('id'); // We now want to use the client-generated ID so it matches storage paths
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      await _guestStorage.saveGuestJob(job);
+      await _guestStorage.incrementJobCount();
+      return job;
+    }
+
+    // Ensure the job has the correct user_id
+    final jobWithUserId = job.copyWith(userId: user.id);
+    final jobData = jobWithUserId.toJson();
 
     final response = await _client
         .from(AppConstants.jobsTable)
@@ -49,6 +62,12 @@ class SupabaseJobRepository implements JobRepository {
 
   @override
   Future<void> updateJob(Job job) async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      await _guestStorage.saveGuestJob(job);
+      return;
+    }
+
     await _client
         .from(AppConstants.jobsTable)
         .update(job.toJson())
@@ -57,6 +76,14 @@ class SupabaseJobRepository implements JobRepository {
 
   @override
   Future<void> updateJobPositions(List<Job> jobs) async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      for (final job in jobs) {
+        await _guestStorage.saveGuestJob(job);
+      }
+      return;
+    }
+
     // Supabase doesn't support batch update with different values in one query easily without RPC.
     // We will iterate and update. For small lists (kanban columns), this is acceptable.
     // Optimisation: Use Future.wait to run in parallel.
@@ -69,6 +96,12 @@ class SupabaseJobRepository implements JobRepository {
 
   @override
   Future<void> deleteJob(String id) async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      await _guestStorage.deleteGuestJob(id);
+      return;
+    }
+
     await _client.from(AppConstants.jobsTable).delete().eq('id', id);
   }
 

@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_a_job/data/repositories/auth_repository.dart';
+import 'package:get_a_job/logic/blocs/auth_bloc.dart';
+import 'package:get_a_job/logic/blocs/auth_event.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'data/repositories/job_repository.dart';
 import 'logic/blocs/job_bloc.dart';
 import 'logic/blocs/job_event.dart';
 import 'logic/blocs/theme_bloc.dart';
 import 'logic/blocs/theme_state.dart';
-import 'presentation/screens/home_screen.dart';
+import 'presentation/widgets/auth_wrapper.dart';
 import 'core/constants.dart';
 import 'core/theme.dart';
 
@@ -31,6 +34,9 @@ class GetAJobApp extends StatelessWidget {
         RepositoryProvider<JobRepository>(
           create: (context) => SupabaseJobRepository(),
         ),
+        RepositoryProvider<AuthRepository>(
+          create: (context) => SupabaseAuthRepository(),
+        ),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -42,6 +48,11 @@ class GetAJobApp extends StatelessWidget {
           BlocProvider<ThemeBloc>(
             create: (context) => ThemeBloc(),
           ),
+          BlocProvider<AuthBloc>(
+            create: (context) => AuthBloc(
+              authRepository: context.read<AuthRepository>(),
+            )..add(AuthInitialized()),
+          ),
         ],
         child: BlocBuilder<ThemeBloc, ThemeState>(
           builder: (context, themeState) {
@@ -51,7 +62,7 @@ class GetAJobApp extends StatelessWidget {
               darkTheme: AppTheme.darkTheme,
               themeMode:
                   themeState.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-              home: const HomeScreen(),
+              home: const AuthWrapper(),
             );
           },
         ),

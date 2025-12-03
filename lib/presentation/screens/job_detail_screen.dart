@@ -8,11 +8,18 @@ import '../../data/models/job_model.dart';
 import '../../logic/blocs/job_bloc.dart';
 import '../../logic/blocs/job_state.dart';
 import '../../logic/blocs/job_event.dart';
+import '../../data/services/guest_storage_service.dart';
+import '../widgets/account_request_dialog.dart';
 
 class JobDetailScreen extends StatefulWidget {
   final Job? job;
+  final bool isGuestMode;
 
-  const JobDetailScreen({super.key, this.job});
+  const JobDetailScreen({
+    super.key,
+    this.job,
+    this.isGuestMode = false,
+  });
 
   @override
   State<JobDetailScreen> createState() => _JobDetailScreenState();
@@ -137,6 +144,59 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
     }
   }
 
+  Future<void> _generateCoverLetter() async {
+    // Construct the job object first to use in checks and generation
+    final job = Job(
+      id: widget.job?.id ?? _tempJobId,
+      title: _titleController.text,
+      company: _companyController.text,
+      source: _source,
+      location: _locationController.text,
+      payRange: _payRangeController.text,
+      description: _descriptionController.text,
+      status: _status,
+      createdAt: _createdAt,
+      closingDate: _closingDate,
+      resumeUrl: _resumeUrl,
+    );
+
+    if (_status != JobStatus.toApply) {
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Cannot Generate Cover Letter'),
+          content: const Text(
+              'The generated cover letter can only be modified when the job is in To Apply status.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    if (widget.isGuestMode) {
+      final guestService = GuestStorageService();
+      final canGenerate = await guestService.canGenerateCoverLetter();
+
+      if (!canGenerate && mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => const AccountRequestDialog(),
+        );
+        return;
+      }
+
+      // If allowed, increment count
+      await guestService.incrementGenerationCount();
+    }
+
+    context.read<JobBloc>().add(GenerateCoverLetter(job));
+  }
+
   Future<void> _uploadResume() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -176,41 +236,6 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
         }
       });
     }
-  }
-
-  Future<void> _generateCoverLetter() async {
-    if (_status != JobStatus.toApply) {
-      await showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Cannot Generate Cover Letter'),
-          content: const Text(
-              'The generated cover letter can only be modified when the job is in To Apply status.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
-      return;
-    }
-    final job = Job(
-      id: widget.job?.id ?? _tempJobId,
-      title: _titleController.text,
-      company: _companyController.text,
-      source: _source,
-      location: _locationController.text,
-      payRange: _payRangeController.text,
-      description: _descriptionController.text,
-      status: _status,
-      createdAt: _createdAt,
-      closingDate: _closingDate,
-      resumeUrl: _resumeUrl,
-    );
-
-    context.read<JobBloc>().add(GenerateCoverLetter(job));
   }
 
   Future<void> _launchUrl(Uri url) async {

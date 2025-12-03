@@ -74,6 +74,7 @@ class Job extends Equatable {
   final String? coverLetter;
   final String? resumeUrl;
   final int position;
+  final String? userId;
 
   const Job({
     required this.id,
@@ -89,6 +90,7 @@ class Job extends Equatable {
     this.coverLetter,
     this.resumeUrl,
     this.position = 0,
+    this.userId,
   });
 
   factory Job.fromJson(Map<String, dynamic> json) {
@@ -110,6 +112,7 @@ class Job extends Equatable {
       coverLetter: json['cover_letter'] as String?,
       resumeUrl: json['resume_url'] as String?,
       position: json['position'] as int? ?? 0,
+      userId: json['user_id'] as String?,
     );
   }
 
@@ -128,6 +131,7 @@ class Job extends Equatable {
       'cover_letter': coverLetter,
       'resume_url': resumeUrl,
       'position': position,
+      'user_id': userId,
     };
   }
 
@@ -145,6 +149,7 @@ class Job extends Equatable {
     String? coverLetter,
     String? resumeUrl,
     int? position,
+    String? userId,
   }) {
     return Job(
       id: id ?? this.id,
@@ -160,6 +165,7 @@ class Job extends Equatable {
       coverLetter: coverLetter ?? this.coverLetter,
       resumeUrl: resumeUrl ?? this.resumeUrl,
       position: position ?? this.position,
+      userId: userId ?? this.userId,
     );
   }
 
@@ -178,5 +184,6 @@ class Job extends Equatable {
         coverLetter,
         resumeUrl,
         position,
+        userId,
       ];
 }
