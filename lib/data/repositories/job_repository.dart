@@ -68,9 +68,15 @@ class SupabaseJobRepository implements JobRepository {
       return;
     }
 
+    // update job with userId
+    final jobWithUserId = job.copyWith(userId: user.id);
+    final jobData = jobWithUserId.toJson();
+
     await _client
         .from(AppConstants.jobsTable)
-        .update(job.toJson())
+        .update(
+          jobData,
+        )
         .eq('id', job.id);
   }
 
@@ -88,9 +94,9 @@ class SupabaseJobRepository implements JobRepository {
     // We will iterate and update. For small lists (kanban columns), this is acceptable.
     // Optimisation: Use Future.wait to run in parallel.
     await Future.wait(jobs.map((job) {
-      return _client
-          .from(AppConstants.jobsTable)
-          .update({'position': job.position}).eq('id', job.id);
+      return _client.from(AppConstants.jobsTable).update(
+        {'position': job.position},
+      ).eq('id', job.id);
     }));
   }
 
