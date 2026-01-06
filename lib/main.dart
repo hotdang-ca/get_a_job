@@ -12,6 +12,8 @@ import 'logic/blocs/theme_state.dart';
 import 'presentation/widgets/auth_wrapper.dart';
 import 'core/constants.dart';
 import 'core/theme.dart';
+import 'data/repositories/resume_repository.dart';
+import 'logic/blocs/resume_bloc.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,6 +39,9 @@ class GetAJobApp extends StatelessWidget {
         RepositoryProvider<AuthRepository>(
           create: (context) => SupabaseAuthRepository(),
         ),
+        RepositoryProvider<ResumeRepository>(
+          create: (context) => SupabaseResumeRepository(),
+        ),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -52,6 +57,11 @@ class GetAJobApp extends StatelessWidget {
             create: (context) => AuthBloc(
               authRepository: context.read<AuthRepository>(),
             )..add(AuthInitialized()),
+          ),
+          BlocProvider<ResumeBloc>(
+            create: (context) => ResumeBloc(
+              resumeRepository: context.read<ResumeRepository>(),
+            ),
           ),
         ],
         child: BlocBuilder<ThemeBloc, ThemeState>(

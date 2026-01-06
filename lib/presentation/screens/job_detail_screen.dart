@@ -10,6 +10,7 @@ import '../../logic/blocs/job_state.dart';
 import '../../logic/blocs/job_event.dart';
 import '../../data/services/guest_storage_service.dart';
 import '../widgets/account_request_dialog.dart';
+import '../widgets/resumes_dialog.dart';
 
 class JobDetailScreen extends StatefulWidget {
   final Job? job;
@@ -198,6 +199,24 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
   }
 
   Future<void> _uploadResume() async {
+    if (!widget.isGuestMode) {
+      final url = await showDialog<String>(
+        context: context,
+        builder: (context) => const ResumesDialog(),
+      );
+
+      if (url != null) {
+        setState(() {
+          _resumeUrl = url;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Resume Linked!')),
+        );
+        _saveJob();
+      }
+      return;
+    }
+
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf', 'doc', 'docx'],
