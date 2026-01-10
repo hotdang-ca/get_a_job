@@ -212,7 +212,7 @@ class JobBloc extends Bloc<JobEvent, JobState> {
 
   Future<void> _onJobSearched(JobSearched event, Emitter<JobState> emit) async {
     final jobs = await _jobRepository.getJobs();
-    final searchText = event.searchText.trim();
+    final searchText = event.searchText.trim().toLowerCase();
 
     if (searchText.isEmpty) {
       emit(state.copyWith(jobs: jobs));
@@ -221,9 +221,9 @@ class JobBloc extends Bloc<JobEvent, JobState> {
     final List<Job> jobsToReturn = [];
     emit(state.copyWith(status: JobLoadingStatus.loading));
     for (final job in jobs) {
-      if ((job.company ?? '').contains(searchText)) {
+      if ((job.company ?? '').toLowerCase().contains(searchText)) {
         jobsToReturn.add(job);
-      } else if (job.title.contains(searchText)) {
+      } else if (job.title.toLowerCase().contains(searchText)) {
         jobsToReturn.add(job);
       }
     }
