@@ -18,6 +18,7 @@ class JobBloc extends Bloc<JobEvent, JobState> {
     on<GenerateCoverLetter>(_onGenerateCoverLetter);
     on<ReorderJob>(_onReorderJob);
     on<ClearJobState>(_onClearJobState);
+    on<JobSearched>(_onJobSearched);
   }
 
   Future<void> _onLoadJobs(LoadJobs event, Emitter<JobState> emit) async {
@@ -206,6 +207,30 @@ class JobBloc extends Bloc<JobEvent, JobState> {
       errorMessage: null,
       isUploading: false,
       isGenerating: false,
+    ));
+  }
+
+  Future<void> _onJobSearched(JobSearched event, Emitter<JobState> emit) async {
+    final jobs = await _jobRepository.getJobs();
+    final searchText = event.searchText.trim();
+
+    if (searchText.isEmpty) {
+      emit(state.copyWith(jobs: jobs));
+    }
+
+    final List<Job> jobsToReturn = [];
+    emit(state.copyWith(status: JobLoadingStatus.loading));
+    for (final job in jobs) {
+      if ((job.company ?? '').contains(searchText)) {
+        jobsToReturn.add(job);
+      } else if (job.title.contains(searchText)) {
+        jobsToReturn.add(job);
+      }
+    }
+
+    emit(state.copyWith(
+      status: JobLoadingStatus.success,
+      jobs: jobsToReturn,
     ));
   }
 }

@@ -83,3 +83,12 @@ class ClearJobState extends JobEvent {
   @override
   List<Object?> get props => [];
 }
+
+class JobSearched extends JobEvent {
+  final String searchText;
+
+  const JobSearched(this.searchText);
+
+  @override
+  List<Object?> get props => [searchText];
+}
