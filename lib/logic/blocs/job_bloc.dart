@@ -225,6 +225,8 @@ class JobBloc extends Bloc<JobEvent, JobState> {
         jobsToReturn.add(job);
       } else if (job.title.toLowerCase().contains(searchText)) {
         jobsToReturn.add(job);
+      } else if ((job.location ?? '').toLowerCase().contains(searchText)) {
+        jobsToReturn.add(job);
       }
     }
 
