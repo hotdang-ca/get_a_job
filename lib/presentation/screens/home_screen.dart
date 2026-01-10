@@ -29,17 +29,57 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final ScrollController _scrollController = ScrollController();
 
+  String? _searchText;
+  late TextEditingController _searchController;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _searchText = '';
+    _searchController = TextEditingController(text: _searchText ?? '');
+    _searchController.addListener(searchTextDidChange);
+  }
+
   @override
   void dispose() {
     _scrollController.dispose();
+    _searchController.removeListener(searchTextDidChange);
+    _searchController.dispose();
+
     super.dispose();
+  }
+
+  void searchTextDidChange() {
+    final String searchText = _searchController.text;
+    final jobBloc = context.read<JobBloc>();
+    jobBloc.add(JobSearched(searchText));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Get A Job'),
+        title: Row(children: [
+          const Text('Get A Job'),
+          Spacer(),
+          Expanded(
+            child: TextFormField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                  prefixIcon: Icon(
+                    Icons.search,
+                    color: Theme.of(context).colorScheme.primary.withAlpha(125),
+                  ),
+                  suffix: IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        _searchController.clear();
+                      }),
+                  labelText: 'Search Job Titles / Company'),
+            ),
+          ),
+        ]),
         actions: [
           BlocBuilder<ThemeBloc, ThemeState>(
             builder: (context, themeState) {

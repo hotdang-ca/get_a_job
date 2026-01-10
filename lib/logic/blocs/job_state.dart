@@ -11,6 +11,7 @@ class JobState extends Equatable {
   final String? lastGeneratedCoverLetter;
   final bool isUploading;
   final bool isGenerating;
+  final String? searchText;
 
   const JobState({
     this.status = JobLoadingStatus.initial,
@@ -20,6 +21,7 @@ class JobState extends Equatable {
     this.lastGeneratedCoverLetter,
     this.isUploading = false,
     this.isGenerating = false,
+    this.searchText,
   });
 
   JobState copyWith({
@@ -30,6 +32,7 @@ class JobState extends Equatable {
     String? lastGeneratedCoverLetter,
     bool? isUploading,
     bool? isGenerating,
+    String? searchText,
   }) {
     return JobState(
       status: status ?? this.status,
@@ -39,6 +42,7 @@ class JobState extends Equatable {
       lastGeneratedCoverLetter: lastGeneratedCoverLetter,
       isUploading: isUploading ?? this.isUploading,
       isGenerating: isGenerating ?? this.isGenerating,
+      searchText: searchText ?? this.searchText,
     );
   }
 
@@ -50,6 +54,7 @@ class JobState extends Equatable {
         lastUploadedResumeUrl,
         lastGeneratedCoverLetter,
         isUploading,
-        isGenerating
+        isGenerating,
+        searchText,
       ];
 }
